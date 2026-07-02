@@ -37,7 +37,7 @@ function parseRelativePath(relativePath: string): string[] {
  */
 function shouldExcludeDirectory(dirName: string): boolean {
     const excludedDirs = new Set([
-        '.git', '.metadata', 'app', 'node_modules', 'dist', 'target',
+        '.git', '.github', '.metadata', 'node_modules', 'dist', 'target',
         'build', '.next', '.cache', 'bin', 'obj', 'out', 'vendor',
         'venv', '__pycache__', '.venv', '.pytest_cache', 'coverage',
         '.nyc_output', '.svn', '.hg'
