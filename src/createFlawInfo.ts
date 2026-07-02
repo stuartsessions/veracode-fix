@@ -40,32 +40,49 @@ export async function createFlawInfo(flawInfo:any,options:any){
         //console.log('StackDumbs length: '+resultArray.stack_dumps.stack_dump.length)
 
         if ( resultArray.stack_dumps.stack_dump.length > 0 ){
-            const flowArray = resultArray.stack_dumps.stack_dump[0].Frame ?? [];
-            flowArray.forEach(async (element: any) => {
-                if (element.SourceFile == sourceFile && element.VarNames != undefined){
+            const stackDump = resultArray.stack_dumps.stack_dump[0];
 
-                    if (options.DEBUG == 'true'){
-                        console.log('#######- DEBUG MODE -#######')
-                        console.log('createFlawInfo.ts')
-                        console.log('Flow element: ')
-                        console.log(element)
-                        console.log('#######- DEBUG MODE -#######')
+            // Check if Frame exists and is an array
+            if (!stackDump.Frame || !Array.isArray(stackDump.Frame) || stackDump.Frame.length === 0) {
+                console.warn('Stack dump exists but Frame is missing, empty, or not an array');
+                let flow = {
+                    "expression": "",
+                    "region": {
+                        "startLine": resultArray.files.source_file.line,
+                        "endLine": resultArray.files.source_file.line,
+                        "startColumn": 0,
+                        "endColumn": 0
                     }
-
-                    let flow = { 
-                        "expression": element.VarNames,
-                        "region": {
-                            "startLine": parseInt(element.SourceLine)+1,
-                            "endLine": parseInt(element.SourceLine)+1,
-                            "startColumn": 0,
-				            "endColumn": 0
-                        }
-                    }
-                    //add flow to flows array
-                    flows.push(flow)
-                
                 }
-            });
+                flows.push(flow);
+            } else {
+                // Process frames synchronously - no async needed
+                stackDump.Frame.forEach((element: any) => {
+                    if (element.SourceFile == sourceFile && element.VarNames != undefined){
+
+                        if (options.DEBUG == 'true'){
+                            console.log('#######- DEBUG MODE -#######')
+                            console.log('createFlawInfo.ts')
+                            console.log('Flow element: ')
+                            console.log(element)
+                            console.log('#######- DEBUG MODE -#######')
+                        }
+
+                        let flow = {
+                            "expression": element.VarNames,
+                            "region": {
+                                "startLine": parseInt(element.SourceLine)+1,
+                                "endLine": parseInt(element.SourceLine)+1,
+                                "startColumn": 0,
+                                "endColumn": 0
+                            }
+                        }
+                        //add flow to flows array
+                        flows.push(flow)
+
+                    }
+                });
+            }
 
             if (options.DEBUG == 'true'){
                 console.log('#######- DEBUG MODE -#######')
