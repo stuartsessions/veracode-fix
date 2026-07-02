@@ -87,8 +87,8 @@ export async function createFlawInfo(flawInfo:any,options:any){
         console.log('Searching for file: '+filename+' in directory: '+dir)
         console.log('#######- DEBUG MODE -#######')
     }
-    const filenameOnly = path.basename(flawInfo.sourceFile);
-    let filepath = await searchFile(dir, filenameOnly, options)
+    // Pass the full relative path to leverage BFS path matching
+    let filepath = await searchFile(dir, flawInfo.sourceFile, options)
     
     // If repository search didn't find the file, fall back to the original path
     if (!filepath || filepath === '') {

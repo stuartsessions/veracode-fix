@@ -139533,7 +139533,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createFlawInfo = createFlawInfo;
 const fs_1 = __importDefault(__nccwpck_require__(79896));
-const path_1 = __importDefault(__nccwpck_require__(16928));
 const rewritePath_1 = __nccwpck_require__(55512);
 function createFlawInfo(flawInfo, options) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -139611,8 +139610,8 @@ function createFlawInfo(flawInfo, options) {
             console.log('Searching for file: ' + filename + ' in directory: ' + dir);
             console.log('#######- DEBUG MODE -#######');
         }
-        const filenameOnly = path_1.default.basename(flawInfo.sourceFile);
-        let filepath = yield (0, rewritePath_1.searchFile)(dir, filenameOnly, options);
+        // Pass the full relative path to leverage BFS path matching
+        let filepath = yield (0, rewritePath_1.searchFile)(dir, flawInfo.sourceFile, options);
         // If repository search didn't find the file, fall back to the original path
         if (!filepath || filepath === '') {
             filepath = filename;
@@ -141871,53 +141870,222 @@ function rewritePath(options, filename) {
         return filename;
     });
 }
+/**
+ * Parse relative path into components, normalizing leading slashes
+ */
+function parseRelativePath(relativePath) {
+    // Remove leading ./ or /
+    let normalized = relativePath;
+    if (normalized.startsWith('./')) {
+        normalized = normalized.substring(2);
+    }
+    else if (normalized.startsWith('/')) {
+        normalized = normalized.substring(1);
+    }
+    // Split by path separator
+    return normalized.split(path_1.default.sep).filter(component => component.length > 0);
+}
+/**
+ * Check if directory should be excluded from search
+ */
+function shouldExcludeDirectory(dirName) {
+    const excludedDirs = new Set([
+        '.git', '.metadata', 'app', 'node_modules', 'dist', 'target',
+        'build', '.next', '.cache', 'bin', 'obj', 'out', 'vendor',
+        'venv', '__pycache__', '.venv', '.pytest_cache', 'coverage',
+        '.nyc_output', '.svn', '.hg'
+    ]);
+    return excludedDirs.has(dirName);
+}
+/**
+ * Try to resolve the full path from a base directory using path components
+ */
+function tryResolvePath(baseDir, pathComponents) {
+    let currentPath = baseDir;
+    for (let i = 0; i < pathComponents.length; i++) {
+        const component = pathComponents[i];
+        const nextPath = path_1.default.join(currentPath, component);
+        // Check if path exists
+        if (!fs_1.default.existsSync(nextPath)) {
+            return null;
+        }
+        try {
+            const stat = fs_1.default.statSync(nextPath);
+            // Last component should be a file
+            if (i === pathComponents.length - 1) {
+                if (stat.isFile()) {
+                    return nextPath;
+                }
+                else {
+                    return null;
+                }
+            }
+            else {
+                // Intermediate components should be directories
+                if (!stat.isDirectory()) {
+                    return null;
+                }
+            }
+            currentPath = nextPath;
+        }
+        catch (err) {
+            return null;
+        }
+    }
+    return null;
+}
+/**
+ * Search for file using BFS with relative path structure
+ */
+function searchFileWithBFS(rootDir, relativePath, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const pathComponents = parseRelativePath(relativePath);
+        if (options.DEBUG === 'true') {
+            console.log('#######- DEBUG MODE -#######');
+            console.log('rewritePath.ts - searchFileWithBFS');
+            console.log(`Searching for: ${relativePath}`);
+            console.log(`Root directory: ${rootDir}`);
+            console.log(`Path components: ${JSON.stringify(pathComponents)}`);
+            console.log('#######- DEBUG MODE -#######');
+        }
+        // If only one component (filename only), search for it directly
+        if (pathComponents.length === 1) {
+            const filename = pathComponents[0];
+            if (options.DEBUG === 'true') {
+                console.log(`Single filename detected: ${filename}, searching for file directly`);
+            }
+            const queue = [{ path: rootDir, depth: 0 }];
+            const visited = new Set();
+            const maxDepth = 15;
+            while (queue.length > 0) {
+                const { path: currentPath, depth } = queue.shift();
+                if (depth > maxDepth || visited.has(currentPath)) {
+                    continue;
+                }
+                visited.add(currentPath);
+                try {
+                    const entries = fs_1.default.readdirSync(currentPath);
+                    for (const entry of entries) {
+                        if (shouldExcludeDirectory(entry)) {
+                            continue;
+                        }
+                        const fullPath = path_1.default.join(currentPath, entry);
+                        try {
+                            const stat = fs_1.default.statSync(fullPath);
+                            if (stat.isFile() && entry === filename) {
+                                if (options.DEBUG === 'true') {
+                                    console.log(`Found file: ${fullPath}`);
+                                }
+                                return fullPath;
+                            }
+                            if (stat.isDirectory()) {
+                                queue.push({ path: fullPath, depth: depth + 1 });
+                            }
+                        }
+                        catch (err) {
+                            continue;
+                        }
+                    }
+                }
+                catch (err) {
+                    continue;
+                }
+            }
+            return null;
+        }
+        const topLevelDir = pathComponents[0];
+        const remainingPath = pathComponents.slice(1);
+        if (options.DEBUG === 'true') {
+            console.log(`Looking for top-level folder: ${topLevelDir}`);
+        }
+        const queue = [{ path: rootDir, depth: 0 }];
+        const visited = new Set();
+        const maxDepth = 10;
+        while (queue.length > 0) {
+            const { path: currentPath, depth } = queue.shift();
+            // Skip if too deep or already visited
+            if (depth > maxDepth || visited.has(currentPath)) {
+                continue;
+            }
+            visited.add(currentPath);
+            try {
+                const entries = fs_1.default.readdirSync(currentPath);
+                for (const entry of entries) {
+                    // Skip excluded directories
+                    if (shouldExcludeDirectory(entry)) {
+                        continue;
+                    }
+                    const fullPath = path_1.default.join(currentPath, entry);
+                    try {
+                        const stat = fs_1.default.statSync(fullPath);
+                        if (stat.isDirectory()) {
+                            // Check if this directory matches our top-level folder
+                            if (entry === topLevelDir) {
+                                if (options.DEBUG === 'true') {
+                                    console.log(`Found candidate folder: ${fullPath}`);
+                                }
+                                // Try to resolve the remaining path from here
+                                const resolvedPath = tryResolvePath(fullPath, remainingPath);
+                                if (resolvedPath) {
+                                    if (options.DEBUG === 'true') {
+                                        console.log(`Successfully resolved path: ${resolvedPath}`);
+                                    }
+                                    return resolvedPath;
+                                }
+                                else if (options.DEBUG === 'true') {
+                                    console.log(`Failed to resolve path from ${fullPath}, continuing search`);
+                                }
+                                // Add to queue to continue exploring inside this directory
+                                queue.push({ path: fullPath, depth: depth + 1 });
+                            }
+                            else {
+                                // Add other directories to queue for continued exploration
+                                queue.push({ path: fullPath, depth: depth + 1 });
+                            }
+                        }
+                    }
+                    catch (err) {
+                        // Skip files/directories we can't stat
+                        continue;
+                    }
+                }
+            }
+            catch (err) {
+                // Skip directories we can't read
+                if (options.DEBUG === 'true') {
+                    console.log(`Cannot read directory ${currentPath}`);
+                }
+                continue;
+            }
+        }
+        return null;
+    });
+}
 function searchFile(dir, filename, options) {
     return __awaiter(this, void 0, void 0, function* () {
         if (options.DEBUG === 'true') {
             console.log('#######- DEBUG MODE -#######');
-            console.log('rewritePath.ts');
+            console.log('rewritePath.ts - searchFile()');
             console.log(`Searching for file: ${filename} in directory: ${dir}`);
             console.log('#######- DEBUG MODE -#######');
         }
-        let result = null;
-        const files = fs_1.default.readdirSync(dir);
-        for (const file of files) {
-            if (file === '.git' || file === '.metadata' || file === 'app')
-                continue;
-            const fullPath = path_1.default.join(dir, file);
-            const stat = fs_1.default.statSync(fullPath);
-            if (stat.isDirectory()) {
-                result = yield searchFile(fullPath, filename, options);
-                // Only stop searching if we actually found the file
-                if (result) {
-                    break;
-                }
-            }
-            else if (file === filename) {
-                console.log(`File found: ${fullPath}`);
-                result = fullPath;
-                break;
-            }
-            else if (options.DEBUG === 'true') {
-                // Only log non-matching files in debug mode to avoid noisy logs
-                console.log(`File checked and not matched: ${fullPath}`);
-            }
+        // Use BFS with relative path structure
+        const bfsResult = yield searchFileWithBFS(dir, filename, options);
+        if (bfsResult) {
+            console.log(`File found: ${bfsResult}`);
+            return bfsResult;
         }
+        // BFS failed - file not found
+        console.log(`File not found: ${filename}`);
         if (options.DEBUG === 'true') {
             console.log('#######- DEBUG MODE -#######');
-            console.log('rewritePath.ts');
-            console.log(`Result: ${result}`);
+            console.log('rewritePath.ts - searchFile()');
+            console.log(`BFS search failed for: ${filename}`);
+            console.log(`Searched from directory: ${dir}`);
+            console.log(`File ${filename} not found in directory tree`);
             console.log('#######- DEBUG MODE -#######');
         }
-        // If no file was found in the entire directory tree, return empty string
-        if (!result) {
-            if (options.DEBUG === 'true') {
-                console.log('rewritePath.ts');
-                console.log(`File ${filename} not found in directory tree starting at: ${dir}`);
-            }
-            return '';
-        }
-        return result;
+        return '';
     });
 }
 /**
