@@ -33,7 +33,9 @@ export async function createFlawInfo(flawInfo:any,options:any){
     let flows:any = []
 
     // Safely access Frame using optional chaining
-    resultArray.stack_dumps?.stack_dump?.[0]?.Frame?.forEach((element: any) => {
+    // If no frame exists, flows remains empty.
+    console.log(resultArray.stack_dumps?.stack_dump?.[0]?.Frame)
+    await resultArray.stack_dumps?.stack_dump?.[0]?.Frame?.forEach((element: any) => {
         if (element.SourceFile == sourceFile && element.VarNames != undefined){
             if (options.DEBUG == 'true'){
                 console.log('#######- DEBUG MODE -#######')
