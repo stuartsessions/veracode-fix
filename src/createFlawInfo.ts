@@ -32,91 +32,48 @@ export async function createFlawInfo(flawInfo:any,options:any){
 
     let flows:any = []
 
-    //console.log('StackDumbs: ')
-    //console.log(resultArray.stack_dumps)
-    
-
-    if ( resultArray.stack_dumps.stack_dump ){
-        //console.log('StackDumbs length: '+resultArray.stack_dumps.stack_dump.length)
-
-        if ( resultArray.stack_dumps.stack_dump.length > 0 ){
-            const stackDump = resultArray.stack_dumps.stack_dump[0];
-
-            // Check if Frame exists and is an array
-            if (!stackDump.Frame || !Array.isArray(stackDump.Frame) || stackDump.Frame.length === 0) {
-                console.warn('Stack dump exists but Frame is missing, empty, or not an array');
-                let flow = {
-                    "expression": "",
-                    "region": {
-                        "startLine": resultArray.files.source_file.line,
-                        "endLine": resultArray.files.source_file.line,
-                        "startColumn": 0,
-                        "endColumn": 0
-                    }
-                }
-                flows.push(flow);
-            } else {
-                // Process frames synchronously - no async needed
-                stackDump.Frame.forEach((element: any) => {
-                    if (element.SourceFile == sourceFile && element.VarNames != undefined){
-
-                        if (options.DEBUG == 'true'){
-                            console.log('#######- DEBUG MODE -#######')
-                            console.log('createFlawInfo.ts')
-                            console.log('Flow element: ')
-                            console.log(element)
-                            console.log('#######- DEBUG MODE -#######')
-                        }
-
-                        let flow = {
-                            "expression": element.VarNames,
-                            "region": {
-                                "startLine": parseInt(element.SourceLine)+1,
-                                "endLine": parseInt(element.SourceLine)+1,
-                                "startColumn": 0,
-                                "endColumn": 0
-                            }
-                        }
-                        //add flow to flows array
-                        flows.push(flow)
-
-                    }
-                });
-            }
-
+    // Safely access Frame using optional chaining
+    resultArray.stack_dumps?.stack_dump?.[0]?.Frame?.forEach((element: any) => {
+        if (element.SourceFile == sourceFile && element.VarNames != undefined){
             if (options.DEBUG == 'true'){
                 console.log('#######- DEBUG MODE -#######')
                 console.log('createFlawInfo.ts')
-                console.log('Flows:')
-                console.log(flows)
+                console.log('Flow element: ')
+                console.log(element)
                 console.log('#######- DEBUG MODE -#######')
             }
-            
-        }
-        else {
-            let flow = { 
-                "expression": "",
+
+            flows.push({
+                "expression": element.VarNames,
                 "region": {
-                    "startLine": resultArray.files.source_file.line,
-                    "endLine": resultArray.files.source_file.line,
+                    "startLine": parseInt(element.SourceLine)+1,
+                    "endLine": parseInt(element.SourceLine)+1,
                     "startColumn": 0,
-				    "endColumn": 0
+                    "endColumn": 0
                 }
-            }
-            flows.push(flow)
-            console.log('No flows 1')
+            })
         }
-    }
-    else {
-        let flow = { 
+    });
+
+    // If no flows found, add default flow pointing to source line
+    if (flows.length === 0) {
+        flows.push({
             "expression": "",
             "region": {
                 "startLine": resultArray.files.source_file.line,
                 "endLine": resultArray.files.source_file.line,
+                "startColumn": 0,
+                "endColumn": 0
             }
-        }
-        flows.push(flow)
-        console.log('No flows 2')
+        });
+    }
+
+    if (options.DEBUG == 'true'){
+        console.log('#######- DEBUG MODE -#######')
+        console.log('createFlawInfo.ts')
+        console.log('Flows:')
+        console.log(flows)
+        console.log('#######- DEBUG MODE -#######')
     }
 
     const filename = resultArray.files.source_file.file
