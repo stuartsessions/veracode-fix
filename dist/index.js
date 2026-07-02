@@ -141900,7 +141900,7 @@ function shouldExcludeDirectory(dirName) {
 /**
  * Try to resolve the full path from a base directory using path components
  */
-function tryResolvePath(baseDir, pathComponents) {
+function tryResolvePath(baseDir, pathComponents, options) {
     let currentPath = baseDir;
     for (let i = 0; i < pathComponents.length; i++) {
         const component = pathComponents[i];
@@ -142000,39 +142000,56 @@ function searchFileWithBFS(rootDir, relativePath, options) {
         }
         const queue = [{ path: rootDir, depth: 0 }];
         const visited = new Set();
-        const maxDepth = 10;
+        const maxDepth = 15; // Increased depth to handle deeper directory structures
+        if (options.DEBUG === 'true') {
+            console.log(`Starting BFS with maxDepth: ${maxDepth}`);
+        }
         while (queue.length > 0) {
             const { path: currentPath, depth } = queue.shift();
             // Skip if too deep or already visited
-            if (depth > maxDepth || visited.has(currentPath)) {
+            if (depth > maxDepth) {
+                if (options.DEBUG === 'true') {
+                    console.log(`Skipping ${currentPath} - depth ${depth} exceeds maxDepth ${maxDepth}`);
+                }
+                continue;
+            }
+            if (visited.has(currentPath)) {
                 continue;
             }
             visited.add(currentPath);
+            if (options.DEBUG === 'true') {
+                console.log(`[Depth ${depth}] Exploring directory: ${currentPath}`);
+            }
             try {
                 const entries = fs_1.default.readdirSync(currentPath);
+                if (options.DEBUG === 'true') {
+                    console.log(`[Depth ${depth}] Found ${entries.length} entries in ${currentPath}`);
+                }
                 for (const entry of entries) {
                     // Skip excluded directories
                     if (shouldExcludeDirectory(entry)) {
+                        if (options.DEBUG === 'true') {
+                            console.log(`[Depth ${depth}] Skipping excluded directory: ${entry}`);
+                        }
                         continue;
                     }
                     const fullPath = path_1.default.join(currentPath, entry);
                     try {
                         const stat = fs_1.default.statSync(fullPath);
                         if (stat.isDirectory()) {
+                            if (options.DEBUG === 'true') {
+                                console.log(`[Depth ${depth}] Found directory: ${entry} (matches target: ${entry === topLevelDir})`);
+                            }
                             // Check if this directory matches our top-level folder
                             if (entry === topLevelDir) {
-                                if (options.DEBUG === 'true') {
-                                    console.log(`Found candidate folder: ${fullPath}`);
-                                }
+                                console.log(`Found candidate folder at depth ${depth}: ${fullPath}`);
                                 // Try to resolve the remaining path from here
-                                const resolvedPath = tryResolvePath(fullPath, remainingPath);
+                                const resolvedPath = tryResolvePath(fullPath, remainingPath, options);
                                 if (resolvedPath) {
-                                    if (options.DEBUG === 'true') {
-                                        console.log(`Successfully resolved path: ${resolvedPath}`);
-                                    }
+                                    console.log(`Successfully resolved path: ${resolvedPath}`);
                                     return resolvedPath;
                                 }
-                                else if (options.DEBUG === 'true') {
+                                else {
                                     console.log(`Failed to resolve path from ${fullPath}, continuing search`);
                                 }
                                 // Add to queue to continue exploring inside this directory
@@ -142046,17 +142063,21 @@ function searchFileWithBFS(rootDir, relativePath, options) {
                     }
                     catch (err) {
                         // Skip files/directories we can't stat
+                        if (options.DEBUG === 'true') {
+                            console.log(`[Depth ${depth}] Cannot stat: ${entry}`);
+                        }
                         continue;
                     }
                 }
             }
             catch (err) {
                 // Skip directories we can't read
-                if (options.DEBUG === 'true') {
-                    console.log(`Cannot read directory ${currentPath}`);
-                }
+                console.log(`Cannot read directory ${currentPath}: ${err}`);
                 continue;
             }
+        }
+        if (options.DEBUG === 'true') {
+            console.log(`BFS completed. Visited ${visited.size} directories without finding ${topLevelDir}`);
         }
         return null;
     });
