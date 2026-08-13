@@ -139914,13 +139914,13 @@ function createPR(fixResults, options, flawArray) {
         prCommentBody = prCommentBody + '> [!CAUTION]\n';
         prCommentBody = prCommentBody + '***Breaking Flaws identified in code!***\n';
         prCommentBody = prCommentBody + '\n';
-        const batchFixResultsCount = Object.keys(fixResults.results).length;
+        const batchFixResultsCount = Object.keys(fixResults.batchResults).length;
         console.log('Number of files with fixes: ' + batchFixResultsCount);
         for (let i = 0; i < batchFixResultsCount; i++) {
-            let keys = Object.keys(fixResults.results);
+            let keys = Object.keys(fixResults.batchResults);
             console.log('Patching file: ' + keys[i]);
             const originalContent = yield fs.readFile(keys[i], 'utf-8');
-            const patch = fixResults.results[keys[i]].patch[0];
+            const patch = fixResults.batchResults[keys[i]].patch[0];
             if (options.DEBUG == 'true') {
                 console.log('#######- DEBUG MODE -#######');
                 console.log('create_pr.ts - apply patch');
