@@ -1,4 +1,5 @@
 .DS_Store
+.vscode/
 example-data/*
 node_modules/*
 data*

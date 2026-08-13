@@ -142510,8 +142510,8 @@ function runBatch(options, credentials) {
                             try {
                                 // Calculate actual fix suggestions count from batch results
                                 let totalFixSuggestions = 0;
-                                if (batchFixResults.results) {
-                                    Object.values(batchFixResults.results).forEach((fileResult) => {
+                                if (batchFixResults.batchResults) {
+                                    Object.values(batchFixResults.batchResults).forEach((fileResult) => {
                                         if (fileResult.flaws) {
                                             fileResult.flaws.forEach((flaw) => {
                                                 if (flaw.patches && flaw.patches.length > 0) {
@@ -142554,11 +142554,11 @@ function runBatch(options, credentials) {
                 }
                 if (options.codeSuggestion == 'true') {
                     console.log('Code suggestion is enabled');
-                    const batchFixResultsCount = Object.keys(batchFixResults.results).length;
+                    const batchFixResultsCount = Object.keys(batchFixResults.batchResults).length;
                     console.log('Number of files with fixes: ' + batchFixResultsCount);
                     let commentBody;
                     for (let i = 0; i < batchFixResultsCount; i++) {
-                        let keys = Object.keys(batchFixResults.results);
+                        let keys = Object.keys(batchFixResults.batchResults);
                         console.log('Creating suggestions for ' + keys[i]);
                         //const codeSuggestion = addCodeSuggestion(batchFixResults, keys[i], options)
                     }
@@ -142577,15 +142577,15 @@ function runBatch(options, credentials) {
             console.log('Batch Fix failed');
         }
         function filterEmptyPatchesFromBatch(batchFixResults, options) {
-            for (let key in batchFixResults.results) {
-                let patch = batchFixResults.results[key].patch;
+            for (let key in batchFixResults.batchResults) {
+                let patch = batchFixResults.batchResults[key].patch;
                 if (patch.length == 0) {
                     if (options.DEBUG == 'true') {
                         console.log('#######- DEBUG MODE -#######');
                         console.log('Removing files with empty patch from batchfix results');
                         console.log('#######- DEBUG MODE -#######');
                     }
-                    delete batchFixResults.results[key];
+                    delete batchFixResults.batchResults[key];
                 }
             }
         }
