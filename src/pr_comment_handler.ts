@@ -373,7 +373,7 @@ async function createInlineComments(
                 core.info(`🔍 Checking batch fix results for issue ${finding.issue_id}`);
                 
                 // Look for the finding in batch fix results
-                const batchResults = options.batchFixResults.results;
+                const batchResults = options.batchFixResults.batchResults;
                 for (const filePath in batchResults) {
                     const fileResults = batchResults[filePath];
                     if (fileResults.flaws) {

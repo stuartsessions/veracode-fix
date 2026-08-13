@@ -106,13 +106,13 @@ export async function createPRComment(results:any, options:any, flawInfo:any){
 
 
 export async function createPRCommentBatch(batchFixResults:any, options:any, flawArray:any){
-    const batchFixResultsCount = Object.keys(batchFixResults.results).length;
+    const batchFixResultsCount = Object.keys(batchFixResults.batchResults).length;
 
     console.log('Number of files with fixes: '+batchFixResultsCount)
     
     for (let i = 0; i < batchFixResultsCount; i++) {
         let commentBody:any
-        let keys = Object.keys(batchFixResults.results);
+        let keys = Object.keys(batchFixResults.batchResults);
         console.log('Creating PR comment for '+keys[i])
         
         commentBody = '![](https://raw.githubusercontent.com/veracode/veracode.github.io/refs/heads/master/assets/images/veracode-black-hires.svg)\n'
@@ -121,9 +121,9 @@ export async function createPRCommentBatch(batchFixResults:any, options:any, fla
         commentBody = commentBody+'\n'
         commentBody = commentBody+'Fixes for '+keys[i]+':\n'
         commentBody = commentBody +'Flaws found for this file:\n'
-        const flawsCount = batchFixResults.results[keys[i]].flaws.length
+        const flawsCount = batchFixResults.batchResults[keys[i]].flaws.length
         for (let j = 0; j < flawsCount; j++) {
-            const issueId = batchFixResults.results[keys[i]].flaws[j].issueId;
+            const issueId = batchFixResults.batchResults[keys[i]].flaws[j].issueId;
             let flaw;
             for (let key in flawArray) {
                 flaw = flawArray[key].find((flaw: any) => flaw.issue_id === issueId);
@@ -136,11 +136,11 @@ export async function createPRCommentBatch(batchFixResults:any, options:any, fla
                 issue_type = flaw.issue_type;
                 severity = flaw.severity;
             } 
-            commentBody = commentBody +'CWE '+batchFixResults.results[keys[i]].flaws[j].CWEId+' - '+issue_type+' - Severity '+severity+' on line '+batchFixResults.results[keys[i]].flaws[j].line+' for issue '+batchFixResults.results[keys[i]].flaws[j].issueId+'\n'
+            commentBody = commentBody +'CWE '+batchFixResults.batchResults[keys[i]].flaws[j].CWEId+' - '+issue_type+' - Severity '+severity+' on line '+batchFixResults.batchResults[keys[i]].flaws[j].line+' for issue '+batchFixResults.batchResults[keys[i]].flaws[j].issueId+'\n'
         }
         commentBody = commentBody + '\nFix suggestions:\n\n'
         commentBody = commentBody + '```diff\n'
-        commentBody = commentBody + batchFixResults.results[keys[i]].patch[0]
+        commentBody = commentBody + batchFixResults.batchResults[keys[i]].patch[0]
         commentBody = commentBody + '\n```'
 
         //console.log('PR Comment: '+commentBody)

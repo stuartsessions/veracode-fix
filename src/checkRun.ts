@@ -185,8 +185,8 @@ export async function updateCheckRunUpdateBatch(options:any, batchFixResults:any
         let allAnnotations: any[] = [];
 
         //Let's check if there are multiple hunks on the first fix result
-        for (let key in batchFixResults.results) {
-            let patches = batchFixResults.results[key].patch;
+        for (let key in batchFixResults.batchResults) {
+            let patches = batchFixResults.batchResults[key].patch;
             for (let i = 0; i < patches.length; i++) {
                 let patch = patches[i];
 

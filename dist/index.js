@@ -138990,8 +138990,8 @@ function updateCheckRunUpdateBatch(options, batchFixResults, flawInfo) {
             // Collect all annotations first
             let allAnnotations = [];
             //Let's check if there are multiple hunks on the first fix result
-            for (let key in batchFixResults.results) {
-                let patches = batchFixResults.results[key].patch;
+            for (let key in batchFixResults.batchResults) {
+                let patches = batchFixResults.batchResults[key].patch;
                 for (let i = 0; i < patches.length; i++) {
                     let patch = patches[i];
                     if (patch.indexOf('@@') > 0) {
@@ -140183,11 +140183,11 @@ function createPRComment(results, options, flawInfo) {
 function createPRCommentBatch(batchFixResults, options, flawArray) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
-        const batchFixResultsCount = Object.keys(batchFixResults.results).length;
+        const batchFixResultsCount = Object.keys(batchFixResults.batchResults).length;
         console.log('Number of files with fixes: ' + batchFixResultsCount);
         for (let i = 0; i < batchFixResultsCount; i++) {
             let commentBody;
-            let keys = Object.keys(batchFixResults.results);
+            let keys = Object.keys(batchFixResults.batchResults);
             console.log('Creating PR comment for ' + keys[i]);
             commentBody = '![](https://raw.githubusercontent.com/veracode/veracode.github.io/refs/heads/master/assets/images/veracode-black-hires.svg)\n';
             commentBody = commentBody + '> [!CAUTION]\n';
@@ -140195,9 +140195,9 @@ function createPRCommentBatch(batchFixResults, options, flawArray) {
             commentBody = commentBody + '\n';
             commentBody = commentBody + 'Fixes for ' + keys[i] + ':\n';
             commentBody = commentBody + 'Flaws found for this file:\n';
-            const flawsCount = batchFixResults.results[keys[i]].flaws.length;
+            const flawsCount = batchFixResults.batchResults[keys[i]].flaws.length;
             for (let j = 0; j < flawsCount; j++) {
-                const issueId = batchFixResults.results[keys[i]].flaws[j].issueId;
+                const issueId = batchFixResults.batchResults[keys[i]].flaws[j].issueId;
                 let flaw;
                 for (let key in flawArray) {
                     flaw = flawArray[key].find((flaw) => flaw.issue_id === issueId);
@@ -140210,11 +140210,11 @@ function createPRCommentBatch(batchFixResults, options, flawArray) {
                     issue_type = flaw.issue_type;
                     severity = flaw.severity;
                 }
-                commentBody = commentBody + 'CWE ' + batchFixResults.results[keys[i]].flaws[j].CWEId + ' - ' + issue_type + ' - Severity ' + severity + ' on line ' + batchFixResults.results[keys[i]].flaws[j].line + ' for issue ' + batchFixResults.results[keys[i]].flaws[j].issueId + '\n';
+                commentBody = commentBody + 'CWE ' + batchFixResults.batchResults[keys[i]].flaws[j].CWEId + ' - ' + issue_type + ' - Severity ' + severity + ' on line ' + batchFixResults.batchResults[keys[i]].flaws[j].line + ' for issue ' + batchFixResults.batchResults[keys[i]].flaws[j].issueId + '\n';
             }
             commentBody = commentBody + '\nFix suggestions:\n\n';
             commentBody = commentBody + '```diff\n';
-            commentBody = commentBody + batchFixResults.results[keys[i]].patch[0];
+            commentBody = commentBody + batchFixResults.batchResults[keys[i]].patch[0];
             commentBody = commentBody + '\n```';
             //console.log('PR Comment: '+commentBody)
             console.log('check if we run on a pull request');
@@ -140906,7 +140906,7 @@ function createInlineComments(token, owner, repo, prNumber, matches, options) {
                 if (options && options.batchFixResults) {
                     core.info(`🔍 Checking batch fix results for issue ${finding.issue_id}`);
                     // Look for the finding in batch fix results
-                    const batchResults = options.batchFixResults.results;
+                    const batchResults = options.batchFixResults.batchResults;
                     for (const filePath in batchResults) {
                         const fileResults = batchResults[filePath];
                         if (fileResults.flaws) {
